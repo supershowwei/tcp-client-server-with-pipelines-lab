@@ -28,13 +28,19 @@ namespace TcpServerLab
                             var stream = client.GetStream();
                             var random = new Random(Guid.NewGuid().GetHashCode());
 
+                            var messages = new string[] { "123\n456", "\n789\n" };
+                            var index = 0;
+
                             while (true)
                             {
-                                var data = Encoding.UTF8.GetBytes(random.Next(int.MaxValue).ToString());
+                                if (index == messages.Length) index = 0;
+
+                                //var data = Encoding.UTF8.GetBytes(random.Next(int.MaxValue).ToString());
+                                var data = Encoding.UTF8.GetBytes(messages[index++]);
 
                                 stream.Write(data, 0, data.Length);
 
-                                Thread.Sleep(5000);
+                                Thread.Sleep(30000);
                             }
                         });
 
@@ -42,6 +48,8 @@ namespace TcpServerLab
                 Task.Run(
                     () =>
                         {
+                            return;
+
                             var stream = client.GetStream();
                             var buffer = new byte[client.ReceiveBufferSize];
 

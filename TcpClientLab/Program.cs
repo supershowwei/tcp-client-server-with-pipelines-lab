@@ -23,6 +23,8 @@ namespace TcpClientLab
             Task.Run(
                 () =>
                     {
+                        return;
+
                         var stream = client.GetStream();
                         var clientId = Guid.NewGuid();
                         var random = new Random(clientId.GetHashCode());
@@ -56,12 +58,31 @@ namespace TcpClientLab
 
                                 if (result.IsCompleted) break;
 
-                                foreach (var segment in result.Buffer)
-                                {
-                                    Console.WriteLine(Encoding.UTF8.GetString(segment.ToArray()));
-                                }
+                                var buffer = result.Buffer;
 
-                                reader.AdvanceTo(result.Buffer.End);
+                                SequencePosition? position;
+
+                                do
+                                {
+                                    position = buffer.PositionOf((byte)'\n');
+
+                                    if (position == null) continue;
+
+                                    var line = buffer.Slice(0, position.Value);
+
+                                    foreach (var segment in line)
+                                    {
+                                        Console.WriteLine(Encoding.UTF8.GetString(segment.ToArray()));
+                                    }
+
+                                    var next = buffer.GetPosition(1, position.Value);
+
+                                    buffer = buffer.Slice(next);
+                                }
+                                while (position != null);
+
+                                //reader.AdvanceTo(buffer.End);
+                                reader.AdvanceTo(buffer.Start, buffer.End);
                             }
                             catch (Exception ex)
                             {
