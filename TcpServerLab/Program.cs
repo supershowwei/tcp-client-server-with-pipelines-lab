@@ -25,6 +25,8 @@ namespace TcpServerLab
                 Task.Run(
                     () =>
                         {
+                            return;
+
                             var stream = client.GetStream();
                             var random = new Random(Guid.NewGuid().GetHashCode());
 
@@ -48,30 +50,63 @@ namespace TcpServerLab
                 Task.Run(
                     () =>
                         {
-                            return;
-
+                            // 取得 NetworkStream
                             var stream = client.GetStream();
-                            var buffer = new byte[client.ReceiveBufferSize];
+
+                            // 宣告資料緩衝區
+                            var line = new List<byte[]>();
 
                             while (true)
                             {
-                                if (stream.CanRead)
+                                // 設定 Buffer 長度
+                                var buffer = new byte[10];
+
+                                // 讀取一個 Buffer 長度的資料
+                                var numBytesRead = stream.Read(buffer, 0, buffer.Length);
+
+                                int newlinePosition;
+                                int numBytesConsumed = 0;
+
+                                do
                                 {
-                                    var content = new List<byte[]>();
+                                    // 搜尋換行符號的位置
+                                    newlinePosition = Array.IndexOf(buffer, (byte)'\n', numBytesConsumed);
 
-                                    do
+                                    if (newlinePosition >= 0)
                                     {
-                                        var numBytesRead = stream.Read(buffer, 0, buffer.Length);
+                                        // 將換行符號之間的資料放進緩衝區
+                                        line.Add(
+                                            buffer.Skip(numBytesConsumed)
+                                                .Take(newlinePosition - numBytesConsumed)
+                                                .ToArray());
 
-                                        content.Add(buffer.Take(numBytesRead).ToArray());
+                                        // 標記已經處理的資料長度
+                                        numBytesConsumed = newlinePosition + 1;
+
+                                        // 緩衝區內的資料已成一包，送給邏輯程序處理。
+                                        ProcessData(line.SelectMany(x => x).ToArray());
+
+                                        // 清空緩衝區
+                                        line.Clear();
                                     }
-                                    while (stream.DataAvailable);
-
-                                    Console.WriteLine(Encoding.UTF8.GetString(content.SelectMany(x => x).ToArray()));
+                                    else
+                                    {
+                                        // 將剩餘的資料放進緩衝區
+                                        line.Add(
+                                            buffer.Skip(numBytesConsumed)
+                                                .Take(numBytesRead - numBytesConsumed)
+                                                .ToArray());
+                                    }
                                 }
+                                while (newlinePosition >= 0);
                             }
                         });
             }
+        }
+
+        private static void ProcessData(byte[] data)
+        {
+            Console.WriteLine(Encoding.UTF8.GetString(data));
         }
     }
 }

@@ -23,7 +23,30 @@ namespace TcpClientLab
             Task.Run(
                 () =>
                     {
-                        return;
+                        var messages = new[]
+                                       {
+                                           "abc\nde\nfgh\n",
+                                           "VCnDanM7\n",
+                                           "nDQVyYUb\n",
+                                           "Cp2y5Yyz\n",
+                                           "W3vNzsMR\n",
+                                           "VUFX96Xu\n",
+                                           "rMcwU5ZgmyqmkSs4\n",
+                                           "hGh6mx3xn8skUNAD\n",
+                                           "KCHrnKD6YWfSvD6s\n",
+                                           "wGntfXhMv9yGAQbd\n",
+                                           "PpWHVQhNYvmDwWvm\n",
+                                           "vnPeS8hmZvCQy3tdKXebpSYC5ykPfKXD\n",
+                                           "awuSMngVaWZ8GP49ZtGpks34apxZuKUZ\n",
+                                           "SBeA9c4ACnPqkNqKDwyG4wmrHa2dxhvS\n",
+                                           "rUS5K3vYB9n5YefNXyqBbgs7FHTzVfH2\n",
+                                           "Bv2Wh5z5MUPXAHUAmtUhqrcTH9Cr8Ze5\n",
+                                           "6WN8srbdnemUtYeMm2ypDAXpvAwmfgRphQfQ8fgqkKBUprZp57CXW99spNfNfm49\n",
+                                           "FukygNhW6Fr2bCgCeeuUqQWvPRvbCYvYgwdyV6sfKzh3wVBAfUsCUqs6aC2TSEV7\n",
+                                           "2aMXUZ6w39DvtstyHRPVS2AAMQRMQ5QQBvSNs36m4FvH982c3g3vkhHXYYcEA34h\n",
+                                           "uyP2VQedUnbaScmQkracBDhtCSeSxQU4zRYP856qpTq5A6pddPHpRDy9GNTPywtp\n",
+                                           "GC6KRMdhzEp6grFbhSFqyNybm9gnYAZAWSc4vzMT9eNtFb4Ysx2xYaTExb7a6hEs\n"
+                                       };
 
                         var stream = client.GetStream();
                         var clientId = Guid.NewGuid();
@@ -31,13 +54,17 @@ namespace TcpClientLab
 
                         while (true)
                         {
-                            var data = Encoding.UTF8.GetBytes($"{clientId}: {random.Next(int.MaxValue).ToString()}");
+                            //var data = Encoding.UTF8.GetBytes($"{clientId}: {random.Next(int.MaxValue).ToString()}");
+                            var data = Encoding.UTF8.GetBytes($"{messages[random.Next(messages.Length)]}");
 
                             stream.Write(data, 0, data.Length);
 
                             Thread.Sleep(1000);
                         }
                     });
+
+            Console.ReadKey();
+            return;
 
             // 一直從 Server 接收資料
             var pipe = new Pipe();
@@ -99,12 +126,13 @@ namespace TcpClientLab
         private static async Task NormalWrite(PipeWriter writer, TcpClient client)
         {
             var stream = client.GetStream();
-            var buffer = new byte[client.ReceiveBufferSize];
 
             while (true)
             {
                 try
                 {
+                    var buffer = new byte[client.ReceiveBufferSize];
+
                     var numBytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
 
                     if (numBytesRead == 0) continue;
@@ -128,6 +156,7 @@ namespace TcpClientLab
                 try
                 {
                     var buffer = writer.GetMemory(1024);
+
                     MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)buffer, out var segment);
 
                     var numBytesRead = await client.Client.ReceiveAsync(segment, SocketFlags.None);
