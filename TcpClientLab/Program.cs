@@ -23,6 +23,8 @@ namespace TcpClientLab
             Task.Run(
                 () =>
                     {
+                        return;
+
                         var messages = new[]
                                        {
                                            "abc\nde\nfgh\n",
@@ -54,7 +56,6 @@ namespace TcpClientLab
 
                         while (true)
                         {
-                            //var data = Encoding.UTF8.GetBytes($"{clientId}: {random.Next(int.MaxValue).ToString()}");
                             var data = Encoding.UTF8.GetBytes($"{messages[random.Next(messages.Length)]}");
 
                             stream.Write(data, 0, data.Length);
@@ -63,80 +64,37 @@ namespace TcpClientLab
                         }
                     });
 
-            Console.ReadKey();
-            return;
-
             // 一直從 Server 接收資料
             var pipe = new Pipe();
             var writer = pipe.Writer;
             var reader = pipe.Reader;
 
-            Task.Run(async () => await NormalWrite(writer, client));
-            //Task.Run(async () => await AnotherWrite(writer, client));
+            Task.Run(async () => await Write(writer, client));
 
-            Task.Run(
-                async () =>
-                    {
-                        while (true)
-                        {
-                            try
-                            {
-                                var result = await reader.ReadAsync();
-
-                                if (result.IsCompleted) break;
-
-                                var buffer = result.Buffer;
-
-                                SequencePosition? position;
-
-                                do
-                                {
-                                    position = buffer.PositionOf((byte)'\n');
-
-                                    if (position == null) continue;
-
-                                    var line = buffer.Slice(0, position.Value);
-
-                                    foreach (var segment in line)
-                                    {
-                                        Console.WriteLine(Encoding.UTF8.GetString(segment.ToArray()));
-                                    }
-
-                                    var next = buffer.GetPosition(1, position.Value);
-
-                                    buffer = buffer.Slice(next);
-                                }
-                                while (position != null);
-
-                                //reader.AdvanceTo(buffer.End);
-                                reader.AdvanceTo(buffer.Start, buffer.End);
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine(ex);
-                            }
-                        }
-
-                        reader.Complete();
-                    });
+            // Task.Run(async () => await AnotherWrite(writer, client));
+            Task.Run(async () => { await Read(reader); });
 
             Console.ReadKey();
         }
 
-        private static async Task NormalWrite(PipeWriter writer, TcpClient client)
+        private static async Task Write(PipeWriter writer, TcpClient client)
         {
+            // 取得 NetworkStream
             var stream = client.GetStream();
 
             while (true)
             {
                 try
                 {
-                    var buffer = new byte[client.ReceiveBufferSize];
+                    // 設定 Buffer 長度
+                    var buffer = new byte[10];
 
+                    // 讀取一個 Buffer 長度的資料
                     var numBytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
 
                     if (numBytesRead == 0) continue;
 
+                    // 將資料寫進 Pipe
                     await writer.WriteAsync(new ReadOnlyMemory<byte>(buffer.Take(numBytesRead).ToArray()));
                 }
                 catch (Exception ex)
@@ -177,6 +135,64 @@ namespace TcpClientLab
             }
 
             writer.Complete();
+        }
+
+        private static async Task Read(PipeReader reader)
+        {
+            while (true)
+            {
+                try
+                {
+                    // 讀取管子內目前的資料狀況
+                    var result = await reader.ReadAsync();
+
+                    if (result.IsCompleted) break;
+
+                    var buffer = result.Buffer;
+
+                    do
+                    {
+                        // 搜尋換行符號的位置
+                        var position = buffer.PositionOf((byte)'\n');
+
+                        if (position == null) break;
+
+                        // 將管子內的換行符號前的資料，送給邏輯程序處理。
+                        ProcessData(buffer.Slice(0, position.Value));
+
+                        // 從目前搜尋到的換行符號的下一個位置，再搜尋換行符號。
+                        var next = buffer.GetPosition(1, position.Value);
+
+                        buffer = buffer.Slice(next);
+                    }
+                    while (true);
+
+                    // 標記管子內有多少資料已經被讀取並處理，主要是釋放管子的空間，讓 Writer 可以重複利用。
+                    reader.AdvanceTo(buffer.Start, buffer.End);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex);
+                    break;
+                }
+            }
+
+            reader.Complete();
+        }
+
+        private static void ProcessData(ReadOnlySequence<byte> line)
+        {
+            if (line.IsSingleSegment)
+            {
+                Console.WriteLine(Encoding.UTF8.GetString(line.First.ToArray()));
+            }
+            else
+            {
+                foreach (var segment in line)
+                {
+                    Console.WriteLine(Encoding.UTF8.GetString(segment.ToArray()));
+                }
+            }
         }
     }
 }
