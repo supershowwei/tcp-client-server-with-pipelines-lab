@@ -96,7 +96,9 @@ namespace TcpClientLab
                     if (numBytesRead == 0) continue;
 
                     // 將資料寫進 Pipe
-                    await writer.WriteAsync(new ReadOnlyMemory<byte>(buffer.Take(numBytesRead).ToArray()));
+                    var flushResult = await writer.WriteAsync(new ReadOnlyMemory<byte>(buffer.Take(numBytesRead).ToArray()));
+
+                    if (flushResult.IsCompleted) break;
                 }
                 catch (Exception ex)
                 {
