@@ -17,8 +17,7 @@ namespace TcpClientLab
         {
             var client = new TcpClient();
 
-            //client.Connect(IPAddress.Parse("127.0.0.1"), 2611);
-            client.Connect(IPAddress.Parse("202.39.107.103"), 6214);
+            client.Connect(IPAddress.Parse("127.0.0.1"), 2611);
 
             // 一直從 Server 接收資料
             var pipe = new Pipe();
