@@ -17,7 +17,13 @@ namespace TcpClientLab
         {
             var client = new TcpClient();
 
-            client.Connect(IPAddress.Parse("127.0.0.1"), 2611);
+            //client.Connect(IPAddress.Parse("127.0.0.1"), 2611);
+            client.Connect(IPAddress.Parse("202.39.107.103"), 6214);
+
+            // 一直從 Server 接收資料
+            var pipe = new Pipe();
+            var writer = pipe.Writer;
+            var reader = pipe.Reader;
 
             // 一直往 Server 送資料
             Task.Run(
@@ -63,11 +69,6 @@ namespace TcpClientLab
                             Thread.Sleep(1000);
                         }
                     });
-
-            // 一直從 Server 接收資料
-            var pipe = new Pipe();
-            var writer = pipe.Writer;
-            var reader = pipe.Reader;
 
             Task.Run(async () => await Write(writer, client));
 
@@ -168,6 +169,7 @@ namespace TcpClientLab
                     while (true);
 
                     // 標記管子內有多少資料已經被讀取並處理，主要是釋放管子的空間，讓 Writer 可以重複利用。
+                    // 有呼叫 ReadAsync() 就一定要呼叫 AdvanceTo()，即使沒有處理到任何資料也是一樣。
                     reader.AdvanceTo(buffer.Start, buffer.End);
                 }
                 catch (Exception ex)
