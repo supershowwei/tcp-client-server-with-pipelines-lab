@@ -16,7 +16,7 @@ namespace TcpClientLab
         private static void Main(string[] args)
         {
             var client = new TcpClient();
-
+            client.ReceiveTimeout = 10000;
             client.Connect(IPAddress.Parse("127.0.0.1"), 2611);
 
             // 一直從 Server 接收資料
@@ -91,6 +91,8 @@ namespace TcpClientLab
 
                     // 讀取一個 Buffer 長度的資料
                     var numBytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+                    
+                    //var numBytesRead = client.Client.Receive(buffer, buffer.Length, SocketFlags.None);
 
                     if (numBytesRead == 0) continue;
 
@@ -98,6 +100,10 @@ namespace TcpClientLab
                     var flushResult = await writer.WriteAsync(new ReadOnlyMemory<byte>(buffer.Take(numBytesRead).ToArray()));
 
                     if (flushResult.IsCompleted) break;
+                }
+                catch (SocketException socketEx) when (socketEx.ErrorCode == 10060)
+                {
+                    continue;
                 }
                 catch (Exception ex)
                 {

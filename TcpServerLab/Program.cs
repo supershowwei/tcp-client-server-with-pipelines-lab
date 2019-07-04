@@ -20,7 +20,7 @@ namespace TcpServerLab
             while (true)
             {
                 var client = server.AcceptTcpClient();
-
+                
                 // 一直送資料給 Client
                 Task.Run(
                     () =>
